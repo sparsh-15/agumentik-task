@@ -16,7 +16,6 @@ export const getSocketUrl = () => {
 export const API_ENDPOINTS = {
   HEALTH: '/api/health',
   PRODUCTS: '/get/products',
-  PRODUCT: (id) => `/get/product/${id}`,
   CREATE_ORDER: '/create/order',
 };
 

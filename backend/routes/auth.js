@@ -51,6 +51,11 @@ router.post('/login', async (req, res) => {
             return res.status(401).json({ message: 'Invalid credentials' });
         }
 
+        // Check if user is active
+        if (!user.isActive) {
+            return res.status(401).json({ message: 'Account is inactive. Please contact administrator.' });
+        }
+
         const isMatch = await user.comparePassword(password);
         if (!isMatch) {
             return res.status(401).json({ message: 'Invalid credentials' });
@@ -65,7 +70,8 @@ router.post('/login', async (req, res) => {
                 id: user._id,
                 name: user.name,
                 email: user.email,
-                role: user.role
+                role: user.role,
+                isActive: user.isActive
             }
         });
     } catch (error) {

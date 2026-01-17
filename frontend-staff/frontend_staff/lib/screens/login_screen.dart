@@ -116,8 +116,19 @@ class _LoginScreenState extends State<LoginScreen> {
                     width: 120,
                     height: 120,
                     decoration: BoxDecoration(
-                      color: Colors.black,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF2563EB), Color(0xFF1E40AF)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
                       shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF2563EB).withValues(alpha: 0.3),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
                     ),
                     child: const Icon(
                       Icons.shopping_bag,
@@ -133,13 +144,17 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
-                      color: Colors.black,
+                      color: Color(0xFF1E293B),
                     ),
                   ),
                   const SizedBox(height: 8),
                   const Text(
                     'Sign in to continue',
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Color(0xFF64748B),
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                   const SizedBox(height: 48),
 
@@ -262,15 +277,18 @@ class _LoginScreenState extends State<LoginScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: const Color(0xFF2563EB).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: const Color(0xFF2563EB).withValues(alpha: 0.2),
+                      ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         const Icon(
                           Icons.info_outline,
-                          color: Colors.white,
+                          color: Color(0xFF2563EB),
                           size: 20,
                         ),
                         const SizedBox(width: 8),
@@ -278,8 +296,11 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: Text(
                             'Contact admin to create your account',
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.9),
+                              color: const Color(
+                                0xFF2563EB,
+                              ).withValues(alpha: 0.8),
                               fontSize: 13,
+                              fontWeight: FontWeight.w500,
                             ),
                             textAlign: TextAlign.center,
                           ),

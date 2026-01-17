@@ -7,7 +7,6 @@ const { Server } = require('socket.io');
 const connectDB = require('./config/db');
 const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
-const productRoutes = require('./routes/products');
 const Product = require('./models/Product');
 
 const app = express();
@@ -33,6 +32,9 @@ app.use(cors({
 app.use(express.json());
 app.use(bodyParser.json());
 
+// Import product routes with io instance
+const productRoutes = require('./routes/products')(io);
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
@@ -51,7 +53,7 @@ async function processOrderQueue() {
 
     try {
         const product = await Product.findById(productId);
-        
+
         if (!product) {
             reject({ status: 404, message: 'Product not found' });
         } else if (!product.isActive) {
@@ -61,14 +63,14 @@ async function processOrderQueue() {
         } else {
             product.stock -= quantity;
             await product.save();
-            
+
             // Get all active products for socket update
             const allProducts = await Product.find({ isActive: true });
             io.emit('stockUpdate', allProducts);
-            
-            resolve({ 
-                status: 200, 
-                message: 'Order placed successfully', 
+
+            resolve({
+                status: 200,
+                message: 'Order placed successfully',
                 product: product,
                 remainingStock: product.stock
             });
@@ -108,14 +110,14 @@ app.get('/get/products', async (req, res) => {
 
 app.post('/create/order', async (req, res) => {
     const { productId, quantity } = req.body;
-    
+
     if (!productId || !quantity || quantity <= 0) {
         return res.status(400).json({ message: 'Invalid product ID or quantity' });
     }
 
     try {
         const result = await queueOrder(productId, quantity);
-        
+
         // Emit order placed notification
         const product = await Product.findById(productId);
         if (product) {
@@ -124,7 +126,7 @@ app.post('/create/order', async (req, res) => {
                 quantity: quantity,
                 remainingStock: product.stock
             });
-            
+
             // Check if out of stock
             if (product.stock === 0) {
                 io.emit('outOfStock', {
@@ -132,7 +134,7 @@ app.post('/create/order', async (req, res) => {
                 });
             }
         }
-        
+
         res.status(result.status).json({
             message: result.message,
             product: result.product,
@@ -145,7 +147,7 @@ app.post('/create/order', async (req, res) => {
 
 io.on('connection', async (socket) => {
     console.log('Client connected:', socket.id);
-    
+
     try {
         // Send current products to newly connected client
         const products = await Product.find({ isActive: true });
@@ -153,7 +155,7 @@ io.on('connection', async (socket) => {
     } catch (error) {
         console.error('Error sending initial products:', error);
     }
-    
+
     socket.on('disconnect', () => {
         console.log('Client disconnected:', socket.id);
     });

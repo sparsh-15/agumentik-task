@@ -47,7 +47,11 @@ class ProductCard extends StatelessWidget {
         gradient: AppColors.primaryGradient,
         borderRadius: BorderRadius.circular(14),
       ),
-      child: const Icon(Icons.inventory_2_rounded, size: 32, color: Colors.white),
+      child: const Icon(
+        Icons.inventory_2_rounded,
+        size: 32,
+        color: Colors.white,
+      ),
     );
   }
 
@@ -65,6 +69,27 @@ class ProductCard extends StatelessWidget {
           ),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 4),
+        // Category badge
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: AppColors.primary.withValues(alpha: 0.2),
+              width: 1,
+            ),
+          ),
+          child: Text(
+            product.category,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: AppColors.primary,
+            ),
+          ),
         ),
         const SizedBox(height: 6),
         Text(
@@ -117,7 +142,11 @@ class ProductCard extends StatelessWidget {
           const SizedBox(width: 5),
           Text(
             text,
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: textColor),
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: textColor,
+            ),
           ),
         ],
       ),
@@ -138,7 +167,11 @@ class ProductCard extends StatelessWidget {
                   SnackBar(
                     content: Row(
                       children: [
-                        const Icon(Icons.check_circle, color: Colors.white, size: 18),
+                        const Icon(
+                          Icons.check_circle,
+                          color: Colors.white,
+                          size: 18,
+                        ),
                         const SizedBox(width: 10),
                         Text('Added ${product.name}'),
                       ],
@@ -150,10 +183,14 @@ class ProductCard extends StatelessWidget {
               }
             : null,
         style: ElevatedButton.styleFrom(
-          backgroundColor: isAvailable ? AppColors.primary : AppColors.background,
+          backgroundColor: isAvailable
+              ? AppColors.primary
+              : AppColors.background,
           foregroundColor: isAvailable ? Colors.white : AppColors.textMuted,
           padding: const EdgeInsets.symmetric(vertical: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
           elevation: 0,
         ),
         child: Text(

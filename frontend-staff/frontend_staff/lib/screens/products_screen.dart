@@ -58,7 +58,11 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
     socket.on('stockUpdate', (data) {
       setState(() {
-        products = (data as List).map((json) => Product.fromJson(json)).toList();
+        // Filter only active products from socket updates
+        products = (data as List)
+            .map((json) => Product.fromJson(json))
+            .where((product) => product.isActive)
+            .toList();
       });
       _handleNotification('Stock levels updated', 'info', playSound: false);
     });
@@ -66,20 +70,124 @@ class _ProductsScreenState extends State<ProductsScreen> {
     socket.on('orderPlaced', (data) {
       final productName = data['productName'];
       final quantity = data['quantity'];
-      _handleNotification('Order placed: $quantity x $productName', 'success', playSound: true);
+      _handleNotification(
+        'Order placed: $quantity x $productName',
+        'success',
+        playSound: true,
+      );
     });
 
     socket.on('outOfStock', (data) {
       final productName = data['productName'];
-      _handleNotification('$productName is now out of stock', 'warning', playSound: true);
+      _handleNotification(
+        '$productName is now out of stock',
+        'warning',
+        playSound: true,
+      );
+    });
+
+    // Listen for product status updates (active/deactive)
+    socket.on('productStatusUpdate', (data) {
+      _handleProductStatusUpdate(data);
+    });
+
+    // Listen for product activated event
+    socket.on('productActivated', (data) {
+      final product = Product.fromJson(data);
+      setState(() {
+        // Add product if not already in list
+        final existingIndex = products.indexWhere((p) => p.id == product.id);
+        if (existingIndex == -1) {
+          products.add(product);
+        } else {
+          products[existingIndex] = product;
+        }
+      });
+      _handleNotification(
+        '${product.name} is now available',
+        'success',
+        playSound: true,
+      );
+    });
+
+    // Listen for product deactivated event
+    socket.on('productDeactivated', (data) {
+      final productId = data['_id'] ?? data['id'];
+      final productName = data['name'] ?? 'Product';
+      setState(() {
+        products.removeWhere((p) => p.id == productId);
+      });
+      _handleNotification(
+        '$productName has been removed',
+        'warning',
+        playSound: true,
+      );
+    });
+
+    // Listen for product updates (general)
+    socket.on('productUpdate', (data) {
+      final product = Product.fromJson(data);
+      setState(() {
+        if (product.isActive) {
+          final existingIndex = products.indexWhere((p) => p.id == product.id);
+          if (existingIndex == -1) {
+            products.add(product);
+          } else {
+            products[existingIndex] = product;
+          }
+        } else {
+          products.removeWhere((p) => p.id == product.id);
+        }
+      });
     });
   }
 
-  void _handleNotification(String message, String type, {bool playSound = false}) {
+  void _handleNotification(
+    String message,
+    String type, {
+    bool playSound = false,
+  }) {
     setState(() {
       notificationService.addNotification(message, type, playSound: playSound);
     });
     notificationService.showSnackbar(context, message, type);
+  }
+
+  /// Handle product status update (active/deactive)
+  void _handleProductStatusUpdate(dynamic data) {
+    try {
+      final productId = data['_id'] ?? data['id'];
+      final isActive = data['isActive'] ?? true;
+      final productName = data['name'] ?? 'Product';
+
+      setState(() {
+        if (isActive) {
+          // Product activated - add to list if not exists
+          final product = Product.fromJson(data);
+          final existingIndex = products.indexWhere((p) => p.id == productId);
+          if (existingIndex == -1) {
+            products.add(product);
+          } else {
+            products[existingIndex] = product;
+          }
+          _handleNotification(
+            '$productName is now available',
+            'success',
+            playSound: true,
+          );
+        } else {
+          // Product deactivated - remove from list
+          products.removeWhere((p) => p.id == productId);
+          _handleNotification(
+            '$productName has been removed',
+            'warning',
+            playSound: true,
+          );
+        }
+      });
+    } catch (e) {
+      debugPrint('Error handling product status update: $e');
+    }
   }
 
   @override
@@ -94,7 +202,11 @@ class _ProductsScreenState extends State<ProductsScreen> {
       final response = await http.get(Uri.parse(ApiConfig.products));
       if (response.statusCode == 200) {
         List<dynamic> jsonData = jsonDecode(response.body);
-        return jsonData.map((json) => Product.fromJson(json)).toList();
+        // Filter only active products
+        return jsonData
+            .map((json) => Product.fromJson(json))
+            .where((product) => product.isActive)
+            .toList();
       } else {
         throw Exception('Failed to load products');
       }
@@ -134,7 +246,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
@@ -184,7 +299,11 @@ class _ProductsScreenState extends State<ProductsScreen> {
               gradient: AppColors.primaryGradient,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.storefront_rounded, color: Colors.white, size: 22),
+            child: const Icon(
+              Icons.storefront_rounded,
+              color: Colors.white,
+              size: 22,
+            ),
           ),
           const SizedBox(width: 12),
           Column(
@@ -201,7 +320,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
               if (widget.userName != null)
                 Text(
                   'Hello, ${widget.userName}',
-                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
             ],
           ),
@@ -224,7 +346,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
     return Stack(
       children: [
         IconButton(
-          icon: Icon(Icons.notifications_outlined, color: AppColors.textSecondary),
+          icon: Icon(
+            Icons.notifications_outlined,
+            color: AppColors.textSecondary,
+          ),
           onPressed: _showNotifications,
         ),
         if (notificationService.notifications.isNotEmpty)
@@ -241,7 +366,11 @@ class _ProductsScreenState extends State<ProductsScreen> {
               child: Center(
                 child: Text(
                   '${notificationService.notifications.length}',
-                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
@@ -254,11 +383,14 @@ class _ProductsScreenState extends State<ProductsScreen> {
     return Stack(
       children: [
         IconButton(
-          icon: Icon(Icons.shopping_bag_outlined, color: AppColors.textSecondary),
+          icon: Icon(
+            Icons.shopping_bag_outlined,
+            color: AppColors.textSecondary,
+          ),
           onPressed: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (context) => const CartScreen()),
-            );
+            Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (context) => const CartScreen()));
           },
         ),
         if (cart.itemCount > 0)
@@ -275,7 +407,11 @@ class _ProductsScreenState extends State<ProductsScreen> {
               child: Center(
                 child: Text(
                   '${cart.itemCount}',
-                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
@@ -329,7 +465,11 @@ class _ProductsScreenState extends State<ProductsScreen> {
           const SizedBox(height: 16),
           Text(
             'Something went wrong',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
           ),
           const SizedBox(height: 8),
           Text(error, style: TextStyle(color: AppColors.textSecondary)),
@@ -349,10 +489,136 @@ class _ProductsScreenState extends State<ProductsScreen> {
   }
 
   Widget _buildProductList() {
+    // Group products by category
+    Map<String, List<Product>> groupedProducts = {};
+    for (var product in products) {
+      if (!groupedProducts.containsKey(product.category)) {
+        groupedProducts[product.category] = [];
+      }
+      groupedProducts[product.category]!.add(product);
+    }
+
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: products.length,
-      itemBuilder: (context, index) => ProductCard(product: products[index]),
+      padding: const EdgeInsets.all(20),
+      itemCount: groupedProducts.keys.length,
+      itemBuilder: (context, categoryIndex) {
+        String category = groupedProducts.keys.elementAt(categoryIndex);
+        List<Product> categoryProducts = groupedProducts[category]!;
+
+        return TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.0, end: 1.0),
+          duration: Duration(milliseconds: 300 + (categoryIndex * 100)),
+          curve: Curves.easeOutCubic,
+          builder: (context, value, child) {
+            return Transform.translate(
+              offset: Offset(0, 20 * (1 - value)),
+              child: Opacity(opacity: value, child: child),
+            );
+          },
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Category header
+              Container(
+                margin: EdgeInsets.only(
+                  bottom: 12,
+                  top: categoryIndex == 0 ? 0 : 20,
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.primary.withValues(alpha: 0.1),
+                      AppColors.accent.withValues(alpha: 0.1),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.2),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        gradient: AppColors.primaryGradient,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        _getCategoryIcon(category),
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        category,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '${categoryProducts.length}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Products in this category
+              ...categoryProducts.map(
+                (product) => ProductCard(product: product),
+              ),
+            ],
+          ),
+        );
+      },
     );
+  }
+
+  IconData _getCategoryIcon(String category) {
+    switch (category.toLowerCase()) {
+      case 'dairy':
+        return Icons.local_drink_rounded;
+      case 'fruits':
+        return Icons.apple_rounded;
+      case 'vegetables':
+        return Icons.eco_rounded;
+      case 'bakery':
+        return Icons.bakery_dining_rounded;
+      case 'grains':
+        return Icons.grain_rounded;
+      case 'beverages':
+        return Icons.local_cafe_rounded;
+      case 'snacks':
+        return Icons.cookie_rounded;
+      case 'meat':
+        return Icons.set_meal_rounded;
+      default:
+        return Icons.category_rounded;
+    }
   }
 }

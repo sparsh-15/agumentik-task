@@ -1,33 +1,24 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:socket_io_client/socket_io_client.dart' as IO;
-
-class Product {
-  final int id;
-  final String name;
-  final int stock;
-  final int price;
-
-  Product({
-    required this.id,
-    required this.name,
-    required this.stock,
-    required this.price,
-  });
-
-  factory Product.fromJson(Map<String, dynamic> json) {
-    return Product(
-      id: json['id'] as int,
-      name: json['name'] as String,
-      stock: json['stock'] as int,
-      price: json['price'] as int,
-    );
-  }
-}
+import 'package:socket_io_client/socket_io_client.dart' as io;
+import 'package:provider/provider.dart';
+import '../providers/cart_provider.dart';
+import '../config/api_config.dart';
+import '../models/product.dart';
+import '../services/notification_service.dart';
+import '../widgets/product_card.dart';
+import '../widgets/notification_sheet.dart';
+import '../utils/app_colors.dart';
+import 'cart_screen.dart';
+import 'login_screen.dart';
 
 class ProductsScreen extends StatefulWidget {
-  const ProductsScreen({super.key});
+  final String? userName;
+  final String? userEmail;
+  final String? token;
+
+  const ProductsScreen({super.key, this.userName, this.userEmail, this.token});
 
   @override
   State<ProductsScreen> createState() => _ProductsScreenState();
@@ -35,59 +26,86 @@ class ProductsScreen extends StatefulWidget {
 
 class _ProductsScreenState extends State<ProductsScreen> {
   late Future<List<Product>> futureProducts;
-  late IO.Socket socket;
+  late io.Socket socket;
+  late NotificationService notificationService;
   List<Product> products = [];
   bool isConnected = false;
 
   @override
   void initState() {
     super.initState();
+    notificationService = NotificationService();
     futureProducts = fetchProducts();
     connectSocket();
   }
 
   void connectSocket() {
-    socket = IO.io('http://10.0.2.2:5000', <String, dynamic>{
-      'transports': ['websocket'],
-      'autoConnect': true,
-    });
+    socket = io.io(
+      ApiConfig.getSocketUrl(),
+      io.OptionBuilder()
+          .setTransports(['websocket'])
+          .enableAutoConnect()
+          .build(),
+    );
 
     socket.on('connect', (_) {
       setState(() => isConnected = true);
-      print('Connected to WebSocket');
     });
 
     socket.on('disconnect', (_) {
       setState(() => isConnected = false);
-      print('Disconnected from WebSocket');
     });
 
     socket.on('stockUpdate', (data) {
-      print('Received stock update: $data');
       setState(() {
         products = (data as List)
             .map((json) => Product.fromJson(json))
             .toList();
       });
+      _handleNotification('Stock levels updated', 'info', playSound: false);
     });
 
-    socket.on('connect_error', (error) {
-      print('Connection error: $error');
+    socket.on('orderPlaced', (data) {
+      final productName = data['productName'];
+      final quantity = data['quantity'];
+      _handleNotification(
+        'Order placed: $quantity x $productName',
+        'success',
+        playSound: true,
+      );
     });
+
+    socket.on('outOfStock', (data) {
+      final productName = data['productName'];
+      _handleNotification(
+        '$productName is now out of stock',
+        'warning',
+        playSound: true,
+      );
+    });
+  }
+
+  void _handleNotification(
+    String message,
+    String type, {
+    bool playSound = false,
+  }) {
+    setState(() {
+      notificationService.addNotification(message, type, playSound: playSound);
+    });
+    notificationService.showSnackbar(context, message, type);
   }
 
   @override
   void dispose() {
     socket.dispose();
+    notificationService.dispose();
     super.dispose();
   }
 
   Future<List<Product>> fetchProducts() async {
     try {
-      final response = await http.get(
-        Uri.parse('http://10.0.2.2:5000/get/products'),
-      );
-
+      final response = await http.get(Uri.parse(ApiConfig.products));
       if (response.statusCode == 200) {
         List<dynamic> jsonData = jsonDecode(response.body);
         return jsonData.map((json) => Product.fromJson(json)).toList();
@@ -99,59 +117,31 @@ class _ProductsScreenState extends State<ProductsScreen> {
     }
   }
 
-  Future<void> placeOrder(int productId, int quantity) async {
-    try {
-      final response = await http.post(
-        Uri.parse('http://10.0.2.2:5000/create/order'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'productId': productId, 'quantity': quantity}),
-      );
-
-      if (response.statusCode == 200) {
-        // Stock will update automatically via WebSocket
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Order placed successfully!')),
-          );
-        }
-      } else if (response.statusCode == 400) {
-        final error = 'Order is rejected due to insufficient stock.';
-        throw Exception(error);
-      } else {
-        final error = jsonDecode(response.body)['message'];
-        throw Exception(error);
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
-      }
-    }
+  void _showNotifications() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => NotificationSheet(
+        notifications: notificationService.notifications,
+        onClearAll: () {
+          setState(() => notificationService.clearAll());
+          Navigator.pop(context);
+        },
+      ),
+    );
   }
 
-  void showOrderDialog(Product product) {
-    final quantityController = TextEditingController(text: '1');
-
+  void _logout() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Order ${product.name}'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Available: ${product.stock} units'),
-            const SizedBox(height: 16),
-            TextField(
-              controller: quantityController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Quantity',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Logout',
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
+        content: const Text('Are you sure you want to logout?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -159,13 +149,18 @@ class _ProductsScreenState extends State<ProductsScreen> {
           ),
           ElevatedButton(
             onPressed: () {
-              final quantity = int.tryParse(quantityController.text) ?? 0;
-              if (quantity > 0) {
-                Navigator.pop(context);
-                placeOrder(product.id, quantity);
-              }
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (context) => const LoginScreen()),
+                (route) => false,
+              );
             },
-            child: const Text('Place Order'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text('Logout'),
           ),
         ],
       ),
@@ -174,134 +169,175 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final cart = Provider.of<CartProvider>(context);
+
     return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Products'),
-            const SizedBox(width: 8),
-            Container(
-              width: 10,
-              height: 10,
-              decoration: BoxDecoration(
-                color: isConnected ? Colors.green : Colors.red,
+      backgroundColor: AppColors.background,
+      appBar: _buildAppBar(cart),
+      body: Column(
+        children: [
+          _buildConnectionIndicator(),
+          Expanded(child: _buildBody()),
+        ],
+      ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar(CartProvider cart) {
+    return AppBar(
+      elevation: 0,
+      backgroundColor: AppColors.primary,
+      foregroundColor: Colors.white,
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Products',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          if (widget.userName != null)
+            Text(
+              'Hello, ${widget.userName}',
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+            ),
+        ],
+      ),
+      actions: [
+        _buildNotificationButton(),
+        _buildCartButton(cart),
+        if (widget.userName != null) _buildLogoutButton(),
+      ],
+    );
+  }
+
+  Widget _buildNotificationButton() {
+    return Stack(
+      children: [
+        IconButton(
+          icon: const Icon(Icons.notifications_outlined),
+          onPressed: _showNotifications,
+        ),
+        if (notificationService.notifications.isNotEmpty)
+          Positioned(
+            right: 8,
+            top: 8,
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: const BoxDecoration(
+                color: AppColors.error,
                 shape: BoxShape.circle,
               ),
-            ),
-          ],
-        ),
-        centerTitle: true,
-      ),
-      body: products.isEmpty
-          ? FutureBuilder<List<Product>>(
-              future: futureProducts,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                } else if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
-                } else if (snapshot.hasData) {
-                  products = snapshot.data!;
-                  return buildProductList();
-                } else {
-                  return const Center(child: Text('No products available'));
-                }
-              },
-            )
-          : buildProductList(),
-    );
-  }
-
-  Widget buildProductList() {
-    return ListView.builder(
-      itemCount: products.length,
-      itemBuilder: (context, index) {
-        final product = products[index];
-        return ProductCard(
-          product: product,
-          onTap: () => showOrderDialog(product),
-        );
-      },
-    );
-  }
-}
-
-class ProductCard extends StatelessWidget {
-  final Product product;
-  final VoidCallback onTap;
-
-  const ProductCard({super.key, required this.product, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: InkWell(
-        onTap: product.stock > 0 ? onTap : null,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                product.name,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Available Quantity',
-                        style: TextStyle(color: Colors.grey, fontSize: 12),
-                      ),
-                      Text(
-                        '${product.stock} units',
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: product.stock > 0 ? Colors.green : Colors.red,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      product.stock > 0 ? 'In Stock' : 'Out of Stock',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w500,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              if (product.stock > 0) ...[
-                const SizedBox(height: 12),
-                const Text(
-                  'Tap to place order',
-                  style: TextStyle(color: Colors.blue, fontSize: 12),
+              constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+              child: Text(
+                '${notificationService.notifications.length}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
                 ),
-              ],
-            ],
+                textAlign: TextAlign.center,
+              ),
+            ),
           ),
+      ],
+    );
+  }
+
+  Widget _buildCartButton(CartProvider cart) {
+    return Stack(
+      children: [
+        IconButton(
+          icon: const Icon(Icons.shopping_bag_outlined),
+          onPressed: () {
+            Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (context) => const CartScreen()));
+          },
+        ),
+        if (cart.itemCount > 0)
+          Positioned(
+            right: 8,
+            top: 8,
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: const BoxDecoration(
+                color: AppColors.error,
+                shape: BoxShape.circle,
+              ),
+              constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+              child: Text(
+                '${cart.itemCount}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildLogoutButton() {
+    return IconButton(icon: const Icon(Icons.logout), onPressed: _logout);
+  }
+
+  Widget _buildConnectionIndicator() {
+    return Container(
+      height: 3,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isConnected
+              ? [AppColors.success, const Color(0xFF059669)]
+              : [AppColors.error, const Color(0xFFDC2626)],
         ),
       ),
+    );
+  }
+
+  Widget _buildBody() {
+    if (products.isEmpty) {
+      return FutureBuilder<List<Product>>(
+        future: futureProducts,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            );
+          } else if (snapshot.hasError) {
+            return _buildErrorState(snapshot.error.toString());
+          } else if (snapshot.hasData) {
+            products = snapshot.data!;
+            return _buildProductList();
+          } else {
+            return const Center(child: Text('No products available'));
+          }
+        },
+      );
+    }
+    return _buildProductList();
+  }
+
+  Widget _buildErrorState(String error) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error_outline, size: 64, color: AppColors.error),
+          const SizedBox(height: 16),
+          Text('Error: $error'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProductList() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: products.length,
+      itemBuilder: (context, index) => ProductCard(product: products[index]),
     );
   }
 }

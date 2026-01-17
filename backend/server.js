@@ -1,8 +1,12 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const http = require('http');
 const { Server } = require('socket.io');
+const connectDB = require('./config/db');
+const authRoutes = require('./routes/auth');
+const adminRoutes = require('./routes/admin');
 
 const app = express();
 const server = http.createServer(app);
@@ -13,16 +17,23 @@ const io = new Server(server, {
     }
 });
 
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
+
+// Connect to MongoDB
+connectDB();
 
 app.use(cors({
     origin: '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
 app.use(express.json());
 app.use(bodyParser.json());
+
+// Auth routes
+app.use('/api/auth', authRoutes);
+app.use('/api/admin', adminRoutes);
 
 let products = [
     { id: 1, name: 'milk', stock: 10, price: 100 },
@@ -49,10 +60,8 @@ async function processOrderQueue() {
         } else if (product.stock < quantity) {
             reject({ status: 400, message: `Insufficient stock. Only ${product.stock} units available` });
         } else {
-            // Atomic operation: deduct stock
             product.stock -= quantity;
             
-            // Broadcast update to all connected clients
             io.emit('stockUpdate', products);
             
             resolve({ 
@@ -66,7 +75,6 @@ async function processOrderQueue() {
         reject({ status: 500, message: 'Internal server error' });
     } finally {
         isProcessingOrder = false;
-        // Process next order in queue
         if (orderQueue.length > 0) {
             setImmediate(processOrderQueue);
         }
@@ -93,13 +101,30 @@ app.get('/get/products', (req, res) => {
 app.post('/create/order', async (req, res) => {
     const { productId, quantity } = req.body;
     
-    // Validate input
     if (!productId || !quantity || quantity <= 0) {
         return res.status(400).json({ message: 'Invalid product ID or quantity' });
     }
 
     try {
         const result = await queueOrder(productId, quantity);
+        
+        // Emit order placed notification
+        const product = products.find(p => p.id === productId);
+        if (product) {
+            io.emit('orderPlaced', {
+                productName: product.name,
+                quantity: quantity,
+                remainingStock: product.stock
+            });
+            
+            // Check if out of stock
+            if (product.stock === 0) {
+                io.emit('outOfStock', {
+                    productName: product.name
+                });
+            }
+        }
+        
         res.status(result.status).json({
             message: result.message,
             product: result.product,
@@ -113,7 +138,6 @@ app.post('/create/order', async (req, res) => {
 io.on('connection', (socket) => {
     console.log('Client connected:', socket.id);
     
-    // Send current products to newly connected client
     socket.emit('stockUpdate', products);
     
     socket.on('disconnect', () => {

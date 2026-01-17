@@ -1,24 +1,25 @@
-const isDevelopment = true; 
+import axios from 'axios';
 
-const API_CONFIG = {
-  PRODUCTION: 'https://agumentik-task.onrender.com',
-  LOCAL: 'http://localhost:5000',
-};
+const API_BASE_URL = 'http://localhost:5000/api';
 
-export const getApiUrl = () => {
-  return isDevelopment ? API_CONFIG.LOCAL : API_CONFIG.PRODUCTION;
-};
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
-export const getSocketUrl = () => {
-  return getApiUrl();
-};
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
-export const API_ENDPOINTS = {
-  HEALTH: '/api/health',
-  PRODUCTS: '/get/products',
-  CREATE_ORDER: '/create/order',
-};
-
-export const buildUrl = (endpoint) => {
-  return `${getApiUrl()}${endpoint}`;
-};
+export default api;

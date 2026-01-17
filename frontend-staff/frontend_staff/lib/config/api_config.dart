@@ -12,7 +12,6 @@ class ApiConfig {
     return getBaseUrl();
   }
 
-  // API Endpoints
   static String get health => '${getBaseUrl()}/api/health';
   static String get products => '${getBaseUrl()}/get/products';
   static String product(int id) => '${getBaseUrl()}/get/product/$id';

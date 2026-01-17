@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../config/api';
 import ToggleSwitch from '../components/ToggleSwitch';
+import { useToast } from '../contexts/ToastContext';
 
 function ViewUsers() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const { success, error: showError } = useToast();
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -63,19 +65,16 @@ function ViewUsers() {
         )
       );
       
-      // Show success message
+      // Show success toast
       const successMessage = `User ${response.data.user.isActive ? 'activated' : 'deactivated'} successfully`;
-      console.log(successMessage);
-      
-      // You can replace alert with a toast notification
-      alert(successMessage);
+      success(successMessage);
       
     } catch (err) {
       console.error('Toggle error:', err);
       console.error('Error response:', err.response?.data);
       
       const errorMessage = err.response?.data?.message || `Failed to ${action} user`;
-      alert(errorMessage);
+      showError(errorMessage);
       
       // If there was an error, refresh the users list to ensure UI is in sync
       fetchUsers();
@@ -100,19 +99,19 @@ function ViewUsers() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="min-h-screen bg-slate-50">
       {/* Enhanced Header */}
-      <header className="bg-white/80 backdrop-blur-md border-b border-blue-100 shadow-sm sticky top-0 z-40">
+      <header className="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
             <div className="flex items-center gap-4">
-              <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-purple-600 to-purple-700 rounded-xl shadow-lg">
+              <div className="flex items-center justify-center w-12 h-12 bg-purple-600 rounded-xl shadow-lg">
                 <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                 </svg>
               </div>
               <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-purple-800 bg-clip-text text-transparent">
+                <h1 className="text-2xl font-bold text-purple-600">
                   User Management
                 </h1>
                 <p className="text-sm text-slate-600">Manage system users and permissions</p>
@@ -130,7 +129,7 @@ function ViewUsers() {
               </button>
               <button
                 onClick={handleLogout}
-                className="px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:from-red-600 hover:to-red-700 transition-all duration-200 text-sm font-medium shadow-lg hover:shadow-xl"
+                className="px-4 py-2 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-all duration-200 text-sm font-medium shadow-lg hover:shadow-xl"
               >
                 Logout
               </button>
@@ -149,9 +148,9 @@ function ViewUsers() {
         {/* Stats and Actions Bar */}
         <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="flex items-center gap-6">
-            <div className="bg-white/70 backdrop-blur-sm rounded-xl p-4 border border-slate-200 shadow-lg">
+            <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-lg">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
+                <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
                   <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                   </svg>
@@ -162,9 +161,9 @@ function ViewUsers() {
                 </div>
               </div>
             </div>
-            <div className="bg-white/70 backdrop-blur-sm rounded-xl p-4 border border-slate-200 shadow-lg">
+            <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-lg">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg flex items-center justify-center">
+                <div className="w-10 h-10 bg-emerald-500 rounded-lg flex items-center justify-center">
                   <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
@@ -175,9 +174,9 @@ function ViewUsers() {
                 </div>
               </div>
             </div>
-            <div className="bg-white/70 backdrop-blur-sm rounded-xl p-4 border border-slate-200 shadow-lg">
+            <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-lg">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg flex items-center justify-center">
+                <div className="w-10 h-10 bg-amber-500 rounded-lg flex items-center justify-center">
                   <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728" />
                   </svg>
@@ -191,7 +190,7 @@ function ViewUsers() {
           </div>
           <button
             onClick={() => navigate('/admin/create-user')}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 font-medium shadow-lg hover:shadow-xl"
+            className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -201,10 +200,10 @@ function ViewUsers() {
         </div>
 
         {/* Enhanced Users Table */}
-        <div className="bg-white/70 backdrop-blur-sm rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
           {users.length === 0 ? (
             <div className="text-center py-20">
-              <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-purple-100 to-purple-200 rounded-2xl mb-6">
+              <div className="inline-flex items-center justify-center w-20 h-20 bg-purple-100 rounded-2xl mb-6">
                 <svg className="w-10 h-10 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                 </svg>
@@ -213,7 +212,7 @@ function ViewUsers() {
               <p className="text-slate-500 mb-6">Get started by creating your first user</p>
               <button
                 onClick={() => navigate('/admin/create-user')}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all font-medium shadow-lg"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all font-medium shadow-lg"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -224,7 +223,7 @@ function ViewUsers() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gradient-to-r from-slate-50 to-purple-50 border-b border-slate-200">
+                <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
                     <th className="px-8 py-5 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
                       User
@@ -253,16 +252,16 @@ function ViewUsers() {
                     
                     return (
                       <tr key={user._id} className={`transition-all duration-200 group ${
-                        isUserActive ? 'hover:bg-purple-50/50' : 'hover:bg-red-50/50 opacity-75'
+                        isUserActive ? 'hover:bg-purple-50' : 'hover:bg-red-50 opacity-75'
                       }`}>
                         <td className="px-8 py-6 whitespace-nowrap">
                           <div className="flex items-center gap-4">
                             <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-lg ${
                               user.role === 'admin' 
-                                ? 'bg-gradient-to-br from-purple-500 to-purple-600' 
+                                ? 'bg-purple-500' 
                                 : isUserActive
-                                ? 'bg-gradient-to-br from-blue-500 to-blue-600'
-                                : 'bg-gradient-to-br from-gray-400 to-gray-500'
+                                ? 'bg-blue-500'
+                                : 'bg-gray-400'
                             }`}>
                               <span className="text-white font-bold text-lg">
                                 {user.name.charAt(0).toUpperCase()}

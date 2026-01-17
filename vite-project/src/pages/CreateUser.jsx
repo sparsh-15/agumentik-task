@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../config/api';
+import { useToast } from '../contexts/ToastContext';
 
 function CreateUser() {
   const [formData, setFormData] = useState({
@@ -12,6 +13,7 @@ function CreateUser() {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { success: showSuccess, error: showError } = useToast();
 
   const handleChange = (e) => {
     setFormData({
@@ -32,7 +34,9 @@ function CreateUser() {
         role: 'user'
       });
 
-      setSuccess(`User ${response.data.user.name} created successfully!`);
+      const successMessage = `User ${response.data.user.name} created successfully!`;
+      setSuccess(successMessage);
+      showSuccess(successMessage);
       setFormData({ name: '', email: '', password: '' });
       setLoading(false);
 
@@ -40,7 +44,9 @@ function CreateUser() {
         navigate('/admin/dashboard');
       }, 2000);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to create user');
+      const errorMessage = err.response?.data?.message || 'Failed to create user';
+      setError(errorMessage);
+      showError(errorMessage);
       setLoading(false);
     }
   };

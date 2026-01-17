@@ -7,6 +7,8 @@ const { Server } = require('socket.io');
 const connectDB = require('./config/db');
 const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
+const productRoutes = require('./routes/products');
+const Product = require('./models/Product');
 
 const app = express();
 const server = http.createServer(app);
@@ -24,22 +26,17 @@ connectDB();
 
 app.use(cors({
     origin: '*',
-    methods: ['GET', 'POST', 'PUT','PATCH', 'DELETE'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
 app.use(express.json());
 app.use(bodyParser.json());
 
-// Auth routes
+// Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
-
-let products = [
-    { id: 1, name: 'milk', stock: 10, price: 100 },
-    { id: 2, name: 'bread', stock: 8, price: 200 },
-    { id: 3, name: 'cheese', stock: 0, price: 300 },
-];
+app.use('/api/products', productRoutes);
 
 const orderQueue = [];
 let isProcessingOrder = false;
@@ -53,25 +50,31 @@ async function processOrderQueue() {
     const { productId, quantity, resolve, reject } = orderQueue.shift();
 
     try {
-        const product = products.find(p => p.id === productId);
+        const product = await Product.findById(productId);
         
         if (!product) {
             reject({ status: 404, message: 'Product not found' });
+        } else if (!product.isActive) {
+            reject({ status: 400, message: 'Product is not available' });
         } else if (product.stock < quantity) {
             reject({ status: 400, message: `Insufficient stock. Only ${product.stock} units available` });
         } else {
             product.stock -= quantity;
+            await product.save();
             
-            io.emit('stockUpdate', products);
+            // Get all active products for socket update
+            const allProducts = await Product.find({ isActive: true });
+            io.emit('stockUpdate', allProducts);
             
             resolve({ 
                 status: 200, 
                 message: 'Order placed successfully', 
-                product: { ...product },
+                product: product,
                 remainingStock: product.stock
             });
         }
     } catch (error) {
+        console.error('Order processing error:', error);
         reject({ status: 500, message: 'Internal server error' });
     } finally {
         isProcessingOrder = false;
@@ -88,14 +91,19 @@ function queueOrder(productId, quantity) {
     });
 }
 
-
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok' });
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-
-app.get('/get/products', (req, res) => {
-    res.json(products);
+// Legacy endpoints for backward compatibility
+app.get('/get/products', async (req, res) => {
+    try {
+        const products = await Product.find({ isActive: true }).sort({ createdAt: -1 });
+        res.json(products);
+    } catch (error) {
+        console.error('Get products error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
 });
 
 app.post('/create/order', async (req, res) => {
@@ -109,7 +117,7 @@ app.post('/create/order', async (req, res) => {
         const result = await queueOrder(productId, quantity);
         
         // Emit order placed notification
-        const product = products.find(p => p.id === productId);
+        const product = await Product.findById(productId);
         if (product) {
             io.emit('orderPlaced', {
                 productName: product.name,
@@ -135,10 +143,16 @@ app.post('/create/order', async (req, res) => {
     }
 });
 
-io.on('connection', (socket) => {
+io.on('connection', async (socket) => {
     console.log('Client connected:', socket.id);
     
-    socket.emit('stockUpdate', products);
+    try {
+        // Send current products to newly connected client
+        const products = await Product.find({ isActive: true });
+        socket.emit('stockUpdate', products);
+    } catch (error) {
+        console.error('Error sending initial products:', error);
+    }
     
     socket.on('disconnect', () => {
         console.log('Client disconnected:', socket.id);
@@ -147,4 +161,5 @@ io.on('connection', (socket) => {
 
 server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 });

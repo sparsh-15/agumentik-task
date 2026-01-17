@@ -58,9 +58,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
     socket.on('stockUpdate', (data) {
       setState(() {
-        products = (data as List)
-            .map((json) => Product.fromJson(json))
-            .toList();
+        products = (data as List).map((json) => Product.fromJson(json)).toList();
       });
       _handleNotification('Stock levels updated', 'info', playSound: false);
     });
@@ -68,28 +66,16 @@ class _ProductsScreenState extends State<ProductsScreen> {
     socket.on('orderPlaced', (data) {
       final productName = data['productName'];
       final quantity = data['quantity'];
-      _handleNotification(
-        'Order placed: $quantity x $productName',
-        'success',
-        playSound: true,
-      );
+      _handleNotification('Order placed: $quantity x $productName', 'success', playSound: true);
     });
 
     socket.on('outOfStock', (data) {
       final productName = data['productName'];
-      _handleNotification(
-        '$productName is now out of stock',
-        'warning',
-        playSound: true,
-      );
+      _handleNotification('$productName is now out of stock', 'warning', playSound: true);
     });
   }
 
-  void _handleNotification(
-    String message,
-    String type, {
-    bool playSound = false,
-  }) {
+  void _handleNotification(String message, String type, {bool playSound = false}) {
     setState(() {
       notificationService.addNotification(message, type, playSound: playSound);
     });
@@ -136,16 +122,19 @@ class _ProductsScreenState extends State<ProductsScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text(
-          'Logout',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.logout_rounded, color: AppColors.error),
+            SizedBox(width: 12),
+            Text('Logout', style: TextStyle(fontWeight: FontWeight.bold)),
+          ],
         ),
         content: const Text('Are you sure you want to logout?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -156,9 +145,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.error,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+              foregroundColor: Colors.white,
             ),
             child: const Text('Logout'),
           ),
@@ -186,26 +173,49 @@ class _ProductsScreenState extends State<ProductsScreen> {
   PreferredSizeWidget _buildAppBar(CartProvider cart) {
     return AppBar(
       elevation: 0,
-      backgroundColor: AppColors.primary,
-      foregroundColor: Colors.white,
-      title: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.transparent,
+      title: Row(
         children: [
-          const Text(
-            'Products',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          if (widget.userName != null)
-            Text(
-              'Hello, ${widget.userName}',
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              gradient: AppColors.primaryGradient,
+              borderRadius: BorderRadius.circular(10),
             ),
+            child: const Icon(Icons.storefront_rounded, color: Colors.white, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Products',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              if (widget.userName != null)
+                Text(
+                  'Hello, ${widget.userName}',
+                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                ),
+            ],
+          ),
         ],
       ),
       actions: [
         _buildNotificationButton(),
         _buildCartButton(cart),
-        if (widget.userName != null) _buildLogoutButton(),
+        if (widget.userName != null)
+          IconButton(
+            icon: const Icon(Icons.logout_rounded, color: AppColors.error),
+            onPressed: _logout,
+          ),
+        const SizedBox(width: 8),
       ],
     );
   }
@@ -214,7 +224,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
     return Stack(
       children: [
         IconButton(
-          icon: const Icon(Icons.notifications_outlined),
+          icon: Icon(Icons.notifications_outlined, color: AppColors.textSecondary),
           onPressed: _showNotifications,
         ),
         if (notificationService.notifications.isNotEmpty)
@@ -222,20 +232,17 @@ class _ProductsScreenState extends State<ProductsScreen> {
             right: 8,
             top: 8,
             child: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: const BoxDecoration(
+              width: 18,
+              height: 18,
+              decoration: BoxDecoration(
                 color: AppColors.error,
                 shape: BoxShape.circle,
               ),
-              constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
-              child: Text(
-                '${notificationService.notifications.length}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
+              child: Center(
+                child: Text(
+                  '${notificationService.notifications.length}',
+                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
                 ),
-                textAlign: TextAlign.center,
               ),
             ),
           ),
@@ -247,11 +254,11 @@ class _ProductsScreenState extends State<ProductsScreen> {
     return Stack(
       children: [
         IconButton(
-          icon: const Icon(Icons.shopping_bag_outlined),
+          icon: Icon(Icons.shopping_bag_outlined, color: AppColors.textSecondary),
           onPressed: () {
-            Navigator.of(
-              context,
-            ).push(MaterialPageRoute(builder: (context) => const CartScreen()));
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const CartScreen()),
+            );
           },
         ),
         if (cart.itemCount > 0)
@@ -259,29 +266,22 @@ class _ProductsScreenState extends State<ProductsScreen> {
             right: 8,
             top: 8,
             child: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: const BoxDecoration(
-                color: AppColors.error,
+              width: 18,
+              height: 18,
+              decoration: BoxDecoration(
+                color: AppColors.primary,
                 shape: BoxShape.circle,
               ),
-              constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
-              child: Text(
-                '${cart.itemCount}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
+              child: Center(
+                child: Text(
+                  '${cart.itemCount}',
+                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
                 ),
-                textAlign: TextAlign.center,
               ),
             ),
           ),
       ],
     );
-  }
-
-  Widget _buildLogoutButton() {
-    return IconButton(icon: const Icon(Icons.logout), onPressed: _logout);
   }
 
   Widget _buildConnectionIndicator() {
@@ -290,8 +290,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: isConnected
-              ? [AppColors.success, const Color(0xFF059669)]
-              : [AppColors.error, const Color(0xFFDC2626)],
+              ? [AppColors.success, AppColors.success.withValues(alpha: 0.7)]
+              : [AppColors.error, AppColors.error.withValues(alpha: 0.7)],
         ),
       ),
     );
@@ -325,9 +325,24 @@ class _ProductsScreenState extends State<ProductsScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.error_outline, size: 64, color: AppColors.error),
+          Icon(Icons.error_outline, size: 64, color: AppColors.error),
           const SizedBox(height: 16),
-          Text('Error: $error'),
+          Text(
+            'Something went wrong',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+          ),
+          const SizedBox(height: 8),
+          Text(error, style: TextStyle(color: AppColors.textSecondary)),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: () {
+              setState(() {
+                futureProducts = fetchProducts();
+              });
+            },
+            icon: const Icon(Icons.refresh),
+            label: const Text('Try Again'),
+          ),
         ],
       ),
     );

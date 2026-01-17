@@ -54,7 +54,7 @@ class NotificationSheet extends StatelessWidget {
       width: 40,
       height: 4,
       decoration: BoxDecoration(
-        color: Colors.grey[300],
+        color: AppColors.border,
         borderRadius: BorderRadius.circular(2),
       ),
     );
@@ -66,12 +66,39 @@ class NotificationSheet extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text(
-            'Notifications',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  gradient: AppColors.primaryGradient,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.notifications_rounded, color: Colors.white, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Notifications',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                  ),
+                  Text(
+                    '${notifications.length} updates',
+                    style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                  ),
+                ],
+              ),
+            ],
           ),
           if (notifications.isNotEmpty)
-            TextButton(onPressed: onClearAll, child: const Text('Clear All')),
+            TextButton.icon(
+              onPressed: onClearAll,
+              icon: const Icon(Icons.clear_all, size: 18),
+              label: const Text('Clear All'),
+              style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            ),
         ],
       ),
     );
@@ -82,11 +109,24 @@ class NotificationSheet extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.notifications_none, size: 80, color: Colors.grey[300]),
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: AppColors.background,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Icon(Icons.notifications_off_outlined, size: 40, color: AppColors.textMuted),
+          ),
           const SizedBox(height: 16),
-          Text(
+          const Text(
             'No notifications yet',
-            style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'You\'re all caught up!',
+            style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
           ),
         ],
       ),
@@ -106,41 +146,47 @@ class NotificationSheet extends StatelessWidget {
   }
 
   Widget _buildNotificationItem(NotificationItem notif) {
-    final Color bgColor = notif.type == 'success'
-        ? AppColors.successLight
-        : notif.type == 'warning'
-        ? AppColors.warningLight
-        : AppColors.infoLight;
+    Color bgColor;
+    Color accentColor;
+    IconData icon;
 
-    final Color borderColor = notif.type == 'success'
-        ? AppColors.success
-        : notif.type == 'warning'
-        ? AppColors.warning
-        : AppColors.info;
-
-    final Color iconColor = borderColor;
-
-    final IconData icon = notif.type == 'success'
-        ? Icons.check_circle
-        : notif.type == 'warning'
-        ? Icons.warning
-        : Icons.info;
+    switch (notif.type) {
+      case 'success':
+        bgColor = AppColors.successLight;
+        accentColor = AppColors.success;
+        icon = Icons.check_circle;
+        break;
+      case 'warning':
+        bgColor = AppColors.warningLight;
+        accentColor = AppColors.warning;
+        icon = Icons.warning;
+        break;
+      case 'error':
+        bgColor = AppColors.errorLight;
+        accentColor = AppColors.error;
+        icon = Icons.error;
+        break;
+      default:
+        bgColor = AppColors.infoLight;
+        accentColor = AppColors.info;
+        icon = Icons.info;
+    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: borderColor.withValues(alpha: 0.3), width: 1),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
-              color: iconColor,
-              borderRadius: BorderRadius.circular(8),
+              color: accentColor,
+              borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, color: Colors.white, size: 20),
           ),
@@ -151,15 +197,18 @@ class NotificationSheet extends StatelessWidget {
               children: [
                 Text(
                   notif.message,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.textPrimary),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  _formatTime(notif.timestamp),
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                Row(
+                  children: [
+                    Icon(Icons.access_time, size: 12, color: AppColors.textMuted),
+                    const SizedBox(width: 4),
+                    Text(
+                      _formatTime(notif.timestamp),
+                      style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                    ),
+                  ],
                 ),
               ],
             ),

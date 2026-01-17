@@ -8,6 +8,7 @@
     "dev": "nodemon server.js",
     "seed:admin": "node scripts/seedAdmin.js",
     "seed:user": "node scripts/createTestUser.js",
+    "seed:products": "node scripts/seedProducts.js",
     "check:users": "node scripts/checkUsers.js",
     "build": "echo \"No build required\""
   },

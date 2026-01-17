@@ -1,7 +1,7 @@
 class CartItem {
-  final int productId;
+  final String productId;
   final String productName;
-  final int price;
+  final double price;
   int quantity;
 
   CartItem({
@@ -11,7 +11,7 @@ class CartItem {
     required this.quantity,
   });
 
-  int get totalPrice => price * quantity;
+  double get totalPrice => price * quantity;
 
   Map<String, dynamic> toJson() {
     return {'productId': productId, 'quantity': quantity};

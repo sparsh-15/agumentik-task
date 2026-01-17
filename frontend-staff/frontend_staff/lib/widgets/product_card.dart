@@ -14,9 +14,10 @@ class ProductCard extends StatelessWidget {
     final cart = Provider.of<CartProvider>(context, listen: false);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.cardBackground,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -26,34 +27,27 @@ class ProductCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            _buildProductImage(),
-            const SizedBox(width: 16),
-            Expanded(child: _buildProductInfo()),
-            const SizedBox(width: 8),
-            _buildAddButton(context, cart),
-          ],
-        ),
+      child: Row(
+        children: [
+          _buildProductImage(),
+          const SizedBox(width: 16),
+          Expanded(child: _buildProductInfo()),
+          const SizedBox(width: 12),
+          _buildAddButton(context, cart),
+        ],
       ),
     );
   }
 
   Widget _buildProductImage() {
     return Container(
-      width: 80,
-      height: 80,
+      width: 70,
+      height: 70,
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.primaryLight, AppColors.primary],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(12),
+        gradient: AppColors.primaryGradient,
+        borderRadius: BorderRadius.circular(14),
       ),
-      child: const Icon(Icons.shopping_basket, size: 40, color: Colors.white),
+      child: const Icon(Icons.inventory_2_rounded, size: 32, color: Colors.white),
     );
   }
 
@@ -64,18 +58,20 @@ class ProductCard extends StatelessWidget {
         Text(
           product.name.toUpperCase(),
           style: const TextStyle(
-            fontSize: 18,
+            fontSize: 15,
             fontWeight: FontWeight.bold,
             letterSpacing: 0.5,
             color: AppColors.textPrimary,
           ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 6),
         Text(
           '₹${product.price}',
           style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
             color: AppColors.primary,
           ),
         ),
@@ -86,48 +82,42 @@ class ProductCard extends StatelessWidget {
   }
 
   Widget _buildStockBadge() {
+    Color bgColor;
+    Color textColor;
+    IconData icon;
+    String text;
+
+    if (product.isOutOfStock) {
+      bgColor = AppColors.errorLight;
+      textColor = AppColors.error;
+      icon = Icons.remove_circle_outline;
+      text = 'Out of Stock';
+    } else if (product.isLowStock) {
+      bgColor = AppColors.warningLight;
+      textColor = AppColors.warning;
+      icon = Icons.warning_amber;
+      text = 'Only ${product.stock} left';
+    } else {
+      bgColor = AppColors.successLight;
+      textColor = AppColors.success;
+      icon = Icons.check_circle;
+      text = '${product.stock} in stock';
+    }
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: product.isOutOfStock
-            ? AppColors.errorLight
-            : product.isLowStock
-            ? AppColors.warningLight
-            : AppColors.successLight,
+        color: bgColor,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            product.isOutOfStock
-                ? Icons.remove_circle_outline
-                : product.isLowStock
-                ? Icons.warning_amber
-                : Icons.check_circle,
-            size: 16,
-            color: product.isOutOfStock
-                ? AppColors.error
-                : product.isLowStock
-                ? AppColors.warning
-                : AppColors.success,
-          ),
-          const SizedBox(width: 6),
+          Icon(icon, size: 14, color: textColor),
+          const SizedBox(width: 5),
           Text(
-            product.isOutOfStock
-                ? 'Out of Stock'
-                : product.isLowStock
-                ? 'Only ${product.stock} left'
-                : '${product.stock} in stock',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: product.isOutOfStock
-                  ? AppColors.error
-                  : product.isLowStock
-                  ? AppColors.warning
-                  : AppColors.success,
-            ),
+            text,
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: textColor),
           ),
         ],
       ),
@@ -135,47 +125,39 @@ class ProductCard extends StatelessWidget {
   }
 
   Widget _buildAddButton(BuildContext context, CartProvider cart) {
+    final isAvailable = product.stock > 0;
+
     return SizedBox(
-      width: 100,
+      width: 80,
       child: ElevatedButton(
-        onPressed: product.stock > 0
+        onPressed: isAvailable
             ? () {
                 cart.addItem(product.id, product.name, product.price);
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Row(
                       children: [
-                        const Icon(
-                          Icons.check_circle,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 12),
+                        const Icon(Icons.check_circle, color: Colors.white, size: 18),
+                        const SizedBox(width: 10),
                         Text('Added ${product.name}'),
                       ],
                     ),
                     duration: const Duration(seconds: 1),
-                    behavior: SnackBarBehavior.floating,
                     backgroundColor: AppColors.success,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    margin: const EdgeInsets.all(16),
                   ),
                 );
               }
             : null,
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
+          backgroundColor: isAvailable ? AppColors.primary : AppColors.background,
+          foregroundColor: isAvailable ? Colors.white : AppColors.textMuted,
           padding: const EdgeInsets.symmetric(vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           elevation: 0,
         ),
         child: Text(
-          product.stock > 0 ? 'Add' : 'Sold Out',
+          isAvailable ? 'Add' : 'Sold Out',
           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
         ),
       ),

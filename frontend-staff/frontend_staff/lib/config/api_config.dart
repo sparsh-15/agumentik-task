@@ -14,6 +14,6 @@ class ApiConfig {
 
   static String get health => '${getBaseUrl()}/api/health';
   static String get products => '${getBaseUrl()}/get/products';
-  static String product(int id) => '${getBaseUrl()}/get/product/$id';
+  static String product(String id) => '${getBaseUrl()}/get/product/$id';
   static String get createOrder => '${getBaseUrl()}/create/order';
 }

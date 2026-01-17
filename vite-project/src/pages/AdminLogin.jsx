@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '../contexts/ToastContext';
 
 function AdminLogin() {
   const [email, setEmail] = useState('');
@@ -8,6 +9,7 @@ function AdminLogin() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { success, error: showError } = useToast();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -23,7 +25,9 @@ function AdminLogin() {
       const { token, user } = response.data;
 
       if (user.role !== 'admin') {
-        setError('Access denied. Admin credentials required.');
+        const errorMsg = 'Access denied. Admin credentials required.';
+        setError(errorMsg);
+        showError(errorMsg);
         setLoading(false);
         return;
       }
@@ -31,25 +35,28 @@ function AdminLogin() {
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
       
+      success('Login successful! Welcome back.');
       navigate('/admin/dashboard');
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed. Please try again.');
+      const errorMsg = err.response?.data?.message || 'Login failed. Please try again.';
+      setError(errorMsg);
+      showError(errorMsg);
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Enhanced Login Card */}
-        <div className="bg-white/80 backdrop-blur-md rounded-3xl shadow-2xl p-8 border border-white/20">
+        <div className="bg-white rounded-3xl shadow-2xl p-8 border border-slate-200">
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl mb-6 shadow-2xl">
+            <div className="inline-flex items-center justify-center w-20 h-20 bg-blue-600 rounded-2xl mb-6 shadow-2xl">
               <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
               </svg>
             </div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent mb-2">
+            <h1 className="text-3xl font-bold text-blue-600 mb-2">
               Admin Portal
             </h1>
             <p className="text-slate-600 font-medium">Sign in to access the dashboard</p>
@@ -77,7 +84,7 @@ function AdminLogin() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full px-4 py-4 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white/50 backdrop-blur-sm text-lg font-medium"
+                className="w-full px-4 py-4 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white text-lg font-medium"
                 placeholder="admin@example.com"
               />
             </div>
@@ -92,7 +99,7 @@ function AdminLogin() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full px-4 py-4 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white/50 backdrop-blur-sm text-lg font-medium"
+                className="w-full px-4 py-4 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white text-lg font-medium"
                 placeholder="••••••••"
               />
             </div>
@@ -100,7 +107,7 @@ function AdminLogin() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-4 rounded-xl font-bold hover:from-blue-700 hover:to-blue-800 focus:ring-4 focus:ring-blue-300 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl text-lg"
+              className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl text-lg"
             >
               {loading ? (
                 <div className="flex items-center justify-center gap-3">
@@ -116,7 +123,7 @@ function AdminLogin() {
           </form>
 
           <div className="mt-8 text-center">
-            <div className="bg-gradient-to-r from-blue-50 to-slate-50 p-4 rounded-xl border border-blue-200">
+            <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
               <p className="text-sm font-bold text-slate-700 mb-2">Default Credentials</p>
               <div className="space-y-1">
                 <p className="text-sm text-slate-600">
